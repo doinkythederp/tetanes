@@ -7,6 +7,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.1](https://github.com/lukexor/tetanes/compare/0.10.0..0.10.1) - 2024-05-21
+
+### ⛰️  Features
+
+
+- Added mapper 11 - ([03d2074](https://github.com/lukexor/tetanes/commit/03d2074d3d58fcf652fecb9d77f4e96e8c007aae))
+
+### 🐛 Bug Fixes
+
+
+- Disable rewind when low on memory. clear rewind memory when disabled - ([4d5e1c4](https://github.com/lukexor/tetanes/commit/4d5e1c4dbe43cceb9ab8d4c33ca832830b2d31d8))
+- Remove redrawing every clock - ([8cea6c1](https://github.com/lukexor/tetanes/commit/8cea6c14718dfd564b1f8ec9e60fc57b2d0602d0))
+- Fixed web build relative urls - ([1423bdb](https://github.com/lukexor/tetanes/commit/1423bdb75766da2d656d24a6075ee38d36002ec9))
+- Fixed a number of issues with loading roms and unintentionally blocking wasm - ([e257575](https://github.com/lukexor/tetanes/commit/e257575c24cde809d156ae6451575ec7cfd70aad))
+- Fix clock timing on web. closes [#234](https://github.com/lukexor/tetanes/pull/234) - ([57d323d](https://github.com/lukexor/tetanes/commit/57d323d44408269b1c72932baa4b3b534e69f70d))
+- Fix frame stats when toggled via menu. closes [#233](https://github.com/lukexor/tetanes/pull/233) - ([347066b](https://github.com/lukexor/tetanes/commit/347066b8f4000dcd88e3a76e8b948b55198ecceb))
+- Add scrolling to lists - ([62ff074](https://github.com/lukexor/tetanes/commit/62ff0745a846cc8aed910244448becd98f155abf))
+- Fix changing slider/drag values - ([8580135](https://github.com/lukexor/tetanes/commit/8580135f6e1e14a84214ca24efd57dbaf7595997))
+
+### 🚜 Refactor
+
+
+- Small gui cleanup - ([880e9ee](https://github.com/lukexor/tetanes/commit/880e9ee4b33d8b12924598e688f01b5e79289590))
+
+### 📚 Documentation
+
+
+- Fixed docs and changelog - ([4c7a694](https://github.com/lukexor/tetanes/commit/4c7a6949e52b6734fd6a78f6d9567c70e12b3ae4))
+
+### ⚙️ Miscellaneous Tasks
+
+
+- Split out web build so it can run on any platform - ([dcaec14](https://github.com/lukexor/tetanes/commit/dcaec14828288d758c713861a7aef6c03e4da47b))
+- Upgrade ringbuf - ([5d7abe2](https://github.com/lukexor/tetanes/commit/5d7abe291493f43b14a0239157dfed930db17d6c))
+
+
 ## [0.10.0](https://github.com/lukexor/tetanes/compare/tetanes-v0.9.0..tetanes-v0.10.0) - 2024-05-16
 
 ### ⛰️  Features
