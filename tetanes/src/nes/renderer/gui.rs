@@ -147,6 +147,7 @@ pub struct Gui {
     pub keybinds_open: bool,
     pub keybinds_tab: KeybindsTab,
     pub perf_stats_open: bool,
+    pub perf_stats_plot: bool,
     pub preferences_open: bool,
     pub preferences_tab: PreferencesTab,
     pub update_window_open: bool,
@@ -230,6 +231,7 @@ impl Gui {
             keybinds_open: false,
             keybinds_tab: KeybindsTab::Shortcuts,
             perf_stats_open: false,
+            perf_stats_plot: false,
             preferences_open: false,
             preferences_tab: PreferencesTab::Emulation,
             update_window_open: false,
@@ -648,6 +650,14 @@ impl Gui {
             .open(&mut perf_stats_open)
             .show(ctx, |ui| self.performance_stats(ui, cfg));
         self.perf_stats_open = perf_stats_open;
+
+        if self.perf_stats_open {
+            let mut perf_stats_plot = self.perf_stats_plot;
+            egui::Window::new("Performance Plot")
+                .open(&mut perf_stats_plot)
+                .show(ctx, |ui| self.performance_plot(ui, cfg));
+            self.perf_stats_plot = perf_stats_open;
+        }
     }
 
     fn show_preferences_viewport(&mut self, ctx: &Context, cfg: &mut Config) {
@@ -1674,12 +1684,12 @@ impl Gui {
             let (cursor_pos, zapper_pos) = match ui.input(|i| i.pointer.latest_pos()) {
                 Some(Pos2 { x, y }) => {
                     let zapper_pos = match cursor_to_zapper(x, y, self.nes_frame) {
-                        Some(Pos2 { x, y }) => format!("({x:.0}, {y:.0})"),
-                        None => "(-, -)".to_string(),
+                        Some(Pos2 { x, y }) => format!("({x:03.0}, {y:03.0})"),
+                        None => "(000, 000)".to_string(),
                     };
-                    (format!("({x:.0}, {y:.0})"), zapper_pos)
+                    (format!("({x:03.0}, {y:03.0})"), zapper_pos)
                 }
-                None => ("(-, -)".to_string(), "(-, -)".to_string()),
+                None => ("(000, 000)".to_string(), "(000, 000)".to_string()),
             };
 
             ui.strong("Cursor Pos:");
@@ -1692,7 +1702,13 @@ impl Gui {
                 ui.end_row();
             }
         });
+
+        ui.separator();
+
+        ui.checkbox(&mut self.perf_stats_plot, "📊 Plot");
     }
+
+    fn performance_plot(&mut self, ui: &mut Ui, cfg: &Config) {}
 
     fn preferences(&mut self, ui: &mut Ui, cfg: &mut Config) {
         #[cfg(feature = "profiling")]
