@@ -539,7 +539,7 @@ impl Renderer {
                                 if canvas_width < desired_window_size.x {
                                     let current_scale = cfg.renderer.scale;
                                     let actual_scale =
-                                        canvas_width as f32 / (aspect_ratio * Ppu::WIDTH as f32);
+                                        canvas_width / (aspect_ratio * Ppu::WIDTH as f32);
                                     if current_scale > actual_scale {
                                         let mut window_size =
                                             self.window_size_for_scale(cfg, actual_scale);
