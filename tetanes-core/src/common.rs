@@ -1,16 +1,17 @@
 //! Common traits and constants.
 
+use alloc::{format, string::String, vec::Vec};
+use core::fmt::Write;
 use enum_dispatch::enum_dispatch;
 use serde::{Deserialize, Serialize};
-use std::fmt::Write;
-use thiserror::Error;
+use snafu::Snafu;
 
 pub const SAVE_DIR: &str = "save";
 pub const SRAM_DIR: &str = "sram";
 
-#[derive(Error, Debug)]
+#[derive(Snafu, Debug)]
 #[must_use]
-#[error("failed to parse `NesRegion`")]
+#[snafu(display("failed to parse `NesRegion`"))]
 pub struct ParseNesRegionError;
 
 #[derive(Default, Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -73,8 +74,8 @@ impl NesRegion {
     }
 }
 
-impl std::fmt::Display for NesRegion {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Display for NesRegion {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let s = match self {
             Self::Auto => "Auto",
             Self::Ntsc => "NTSC",
@@ -165,11 +166,11 @@ pub trait Sample {
 /// Trait for types that can save RAM to disk.
 #[enum_dispatch(Mapper)]
 pub trait Sram {
-    fn save(&self, _path: impl AsRef<std::path::Path>) -> crate::fs::Result<()> {
+    fn save(&self, _path: impl AsRef<crate::Path>) -> crate::fs::Result<()> {
         Ok(())
     }
 
-    fn load(&mut self, _path: impl AsRef<std::path::Path>) -> crate::fs::Result<()> {
+    fn load(&mut self, _path: impl AsRef<crate::Path>) -> crate::fs::Result<()> {
         Ok(())
     }
 }
@@ -177,7 +178,7 @@ pub trait Sram {
 /// Prints a hex dump of a given byte array starting at `addr_offset`.
 #[must_use]
 pub fn hexdump(data: &[u8], addr_offset: usize) -> Vec<String> {
-    use std::cmp;
+    use core::cmp;
 
     let mut addr = 0;
     let len = data.len();
@@ -229,7 +230,7 @@ pub fn hexdump(data: &[u8], addr_offset: usize) -> Vec<String> {
     output
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "std"))]
 pub(crate) mod tests {
     use crate::{
         action::Action,
@@ -241,9 +242,7 @@ pub(crate) mod tests {
         video::VideoFilter,
     };
     use anyhow::Context;
-    use image::{ImageBuffer, Rgba};
-    use serde::{Deserialize, Serialize};
-    use std::{
+    use core::{
         collections::hash_map::DefaultHasher,
         env,
         fmt::Write,
@@ -253,6 +252,8 @@ pub(crate) mod tests {
         path::{Path, PathBuf},
         sync::OnceLock,
     };
+    use image::{ImageBuffer, Rgba};
+    use serde::{Deserialize, Serialize};
     use tracing::debug;
 
     pub(crate) const RESULT_DIR: &str = "test_results";
@@ -438,7 +439,7 @@ pub(crate) mod tests {
                         .with_line_number(true)
                         .with_thread_ids(true)
                         .with_thread_names(true)
-                        .with_writer(std::io::stderr),
+                        .with_writer(core::io::coreerr),
                 )
                 .init();
             let result_dir = base_dir.join(PathBuf::from(RESULT_DIR));

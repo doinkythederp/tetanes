@@ -51,8 +51,8 @@ pub enum MapperRevision {
     Bf909(Bf909Revision), // Can compare to submapper 1, if header is correct
 }
 
-impl std::fmt::Display for MapperRevision {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Display for MapperRevision {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let s = match self {
             MapperRevision::Mmc3(rev) => match rev {
                 Mmc3Revision::A => "MMC3A",

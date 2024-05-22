@@ -1386,8 +1386,8 @@ impl Cpu {
     }
 }
 
-impl std::fmt::Display for Instr {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
+impl core::fmt::Display for Instr {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::result::Result<(), core::fmt::Error> {
         let mut op = self.op();
         let unofficial = match self.op() {
             XXX | ISB | DCP | AXS | LAS | LAX | AHX | SAX | XAA | SXA | RRA | TAS | SYA | ARR

@@ -6,8 +6,9 @@ use crate::{
     common::{NesRegion, Sample},
     cpu::Cpu,
 };
+use alloc::{vec, vec::Vec};
+use core::f32::consts::{PI, TAU};
 use serde::{Deserialize, Serialize};
-use std::f32::consts::{PI, TAU};
 
 /// A trait for audio processing that consumes samples.
 pub trait Consume {

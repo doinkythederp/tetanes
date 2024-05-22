@@ -31,36 +31,47 @@ unused = "warn"
 
 [features]
 default = ["cycle-accurate"]
-profiling = ["dep:puffin"]
+profiling = ["dep:puffin", "std"]
 cycle-accurate = []
+std = ["dep:dirs", "dep:flate2"]
 
 [dependencies]
 bincode.workspace = true
 bitflags = { version = "2.4", features = ["serde"] }
 cfg-if.workspace = true
-dirs.workspace = true
-enum_dispatch = "0.3"
-flate2 = "1.0"
-rand = "0.8"
-serde.workspace = true
-thiserror.workspace = true
+dirs = { workspace = true, optional = true }
+# enum_dispatch = "0.3"
+serde = { version = "1.0", features = ["derive"], default-features = false }
+flate2 = { version = "1.0.30", optional = true }
+log = { version = "0.4.21", default-features = false }
+rand = { version = "0.8", default-features = false, features = ["alloc"] }
+snafu = { version = "0.8.2", default-features = false, features = [
+    "rust_1_65",
+    "unstable-core-error",
+] }
 tracing.workspace = true
+enum_dispatch = { git = "https://github.com/QuarkContainer/enum_dispatch_clone.git", version = "0.3.8" }
+hashbrown = "0.14.5"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 puffin = { workspace = true, optional = true }
+
+[target.'cfg(target_vendor = "vex")'.dependencies]
+vexide-core = "0.2.0"
+unix_path = { version = "1.0.1", default-features = false }
+no_std_io = { version = "0.6.0", features = ["alloc", "nightly"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 puffin = { workspace = true, features = ["web"], optional = true }
 web-time.workspace = true
 
 [dev-dependencies]
-anyhow.workspace = true
-image.workspace = true
-serde_json.workspace = true
-tracing-subscriber.workspace = true
+# anyhow.workspace = true
+# image.workspace = true
+# serde_json.workspace = true
 
-[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
-criterion = { version = "0.5", features = ["html_reports"] }
+# [target.'cfg(not(target_arch = "wasm32")'.dev-dependencies]
+# criterion = { version = "0.5", features = ["html_reports"] }
 
 [[bench]]
 name = "clock_frame"

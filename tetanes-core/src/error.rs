@@ -1,9 +1,9 @@
 //! Error handling.
 
-use std::path::PathBuf;
+use core::path::PathBuf;
 use thiserror::Error;
 
-pub type Result<T> = std::result::Result<T, Error>;
+pub type Result<T> = core::result::Result<T, Error>;
 
 #[derive(Error, Debug)]
 #[must_use]
@@ -20,14 +20,14 @@ pub enum Error {
     #[error("{context}: {source:?}")]
     Io {
         context: String,
-        source: std::io::Error,
+        source: crate::io::Error,
     },
     #[error("{0}")]
     Unknown(String),
 }
 
 impl Error {
-    pub fn io(source: std::io::Error, context: impl Into<String>) -> Self {
+    pub fn io(source: crate::io::Error, context: impl Into<String>) -> Self {
         Self::Io {
             context: context.into(),
             source,

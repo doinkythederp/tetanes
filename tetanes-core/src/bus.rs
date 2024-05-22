@@ -13,9 +13,11 @@ use crate::{
     mapper::{Mapped, MappedRead, MappedWrite, Mapper, MemMap},
     mem::{Access, Mem, RamState},
     ppu::{Ppu, Registers},
+    Path,
 };
+use alloc::{vec, vec::Vec};
+use hashbrown::HashMap;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, path::Path};
 
 /// NES Bus
 ///
@@ -316,8 +318,8 @@ impl Sram for Bus {
     }
 }
 
-impl std::fmt::Debug for Bus {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Debug for Bus {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("Bus")
             .field("wram_len", &self.wram.len())
             .field("region", &self.region)
@@ -334,7 +336,7 @@ impl std::fmt::Debug for Bus {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(feature = "std", test))]
 mod test {
     use super::*;
     use crate::mapper::Cnrom;

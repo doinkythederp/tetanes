@@ -7,7 +7,7 @@ use crate::{
 };
 use bitflags::bitflags;
 use serde::{Deserialize, Serialize};
-use std::str::FromStr;
+use core::str::FromStr;
 use thiserror::Error;
 use tracing::trace;
 
@@ -26,8 +26,8 @@ pub enum Player {
     Four,
 }
 
-impl std::fmt::Display for Player {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Display for Player {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let s = match self {
             Self::One => "One",
             Self::Two => "Two",
@@ -98,8 +98,8 @@ impl AsRef<str> for FourPlayer {
     }
 }
 
-impl std::fmt::Display for FourPlayer {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Display for FourPlayer {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let s = match self {
             Self::Disabled => "Disabled",
             Self::FourScore => "FourScore",

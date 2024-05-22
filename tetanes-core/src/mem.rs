@@ -1,8 +1,8 @@
 //! Memory and Bankswitching implementations.
 
+use core::str::FromStr;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
-use std::str::FromStr;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[must_use]
@@ -100,8 +100,8 @@ impl AsRef<str> for RamState {
     }
 }
 
-impl std::fmt::Display for RamState {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Display for RamState {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let s = match self {
             Self::AllZeros => "All $00",
             Self::AllOnes => "All $FF",
@@ -143,7 +143,7 @@ impl MemBanks {
         for (i, bank) in banks.iter_mut().enumerate() {
             *bank = i * window;
         }
-        let page_count = std::cmp::max(1, capacity / window);
+        let page_count = core::cmp::max(1, capacity / window);
         Self {
             start,
             end,
@@ -223,8 +223,8 @@ impl MemBanks {
     }
 }
 
-impl std::fmt::Debug for MemBanks {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
+impl core::fmt::Debug for MemBanks {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::result::Result<(), core::fmt::Error> {
         f.debug_struct("Bank")
             .field("start", &format_args!("${:04X}", self.start))
             .field("end", &format_args!("${:04X}", self.end))

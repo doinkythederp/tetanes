@@ -1,0 +1,6 @@
+{
+    "rust-analyzer.linkedProjects": [
+        "./tetanes-core/Cargo.toml"
+    ],
+    "rust-analyzer.check.workspace": true,
+}

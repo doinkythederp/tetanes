@@ -6,6 +6,7 @@ use crate::{
     mem::{Access, Mem},
     ppu::{Mirroring, Ppu},
 };
+use alloc::{vec, vec::Vec};
 use serde::{Deserialize, Serialize};
 use tracing::error;
 
@@ -260,8 +261,8 @@ impl Reset for Bus {
     }
 }
 
-impl std::fmt::Debug for Bus {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Debug for Bus {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("PpuBus")
             .field("mapper", &self.mapper)
             .field("ciram_len", &self.ciram.len())
@@ -274,7 +275,7 @@ impl std::fmt::Debug for Bus {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(feature = "std", test))]
 mod tests {
     use super::*;
 

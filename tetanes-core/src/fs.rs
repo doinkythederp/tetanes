@@ -1,12 +1,12 @@
 //! Filesystem utilities for save state and compression.
 
 use crate::sys::fs;
-use flate2::{read::DeflateDecoder, write::DeflateEncoder, Compression};
-use serde::{de::DeserializeOwned, Serialize};
-use std::{
+use core::{
     io::{Cursor, Read, Write},
     path::{Path, PathBuf},
 };
+use flate2::{read::DeflateDecoder, write::DeflateEncoder, Compression};
+use serde::{de::DeserializeOwned, Serialize};
 use thiserror::Error;
 use tracing::warn;
 
@@ -15,7 +15,7 @@ const SAVE_FILE_MAGIC: [u8; SAVE_FILE_MAGIC_LEN] = *b"TETANES\x1a";
 // Keep this separate from Semver because breaking API changes may not invalidate the save format.
 const SAVE_VERSION: &str = "1";
 
-pub type Result<T> = std::result::Result<T, Error>;
+pub type Result<T> = core::result::Result<T, Error>;
 
 #[derive(Error, Debug)]
 #[must_use]
@@ -23,11 +23,11 @@ pub enum Error {
     #[error("invalid tetanes header: {0}")]
     InvalidHeader(String),
     #[error("failed to write tetanes header: {0:?}")]
-    WriteHeaderFailed(std::io::Error),
+    WriteHeaderFailed(crate::io::Error),
     #[error("failed to encode data: {0:?}")]
-    EncodingFailed(std::io::Error),
+    EncodingFailed(crate::io::Error),
     #[error("failed to decode data: {0:?}")]
-    DecodingFailed(std::io::Error),
+    DecodingFailed(crate::io::Error),
     #[error("failed to serialize data: {0:?}")]
     SerializationFailed(String),
     #[error("failed to deserialize data: {0:?}")]
@@ -36,7 +36,7 @@ pub enum Error {
     InvalidPath(PathBuf),
     #[error("{context}: {source:?}")]
     Io {
-        source: std::io::Error,
+        source: crate::io::Error,
         context: String,
     },
     #[error("{0}")]
@@ -44,7 +44,7 @@ pub enum Error {
 }
 
 impl Error {
-    pub fn io(source: std::io::Error, context: impl Into<String>) -> Self {
+    pub fn io(source: crate::io::Error, context: impl Into<String>) -> Self {
         Self::Io {
             source,
             context: context.into(),
@@ -61,7 +61,7 @@ impl Error {
 /// # Errors
 ///
 /// If the header fails to write to disk, then an error is returned.
-pub(crate) fn write_header(f: &mut impl Write) -> std::io::Result<()> {
+pub(crate) fn write_header(f: &mut impl Write) -> core::io::Result<()> {
     f.write_all(&SAVE_FILE_MAGIC)?;
     f.write_all(SAVE_VERSION.as_bytes())
 }
@@ -93,14 +93,14 @@ pub(crate) fn validate_header(f: &mut impl Read) -> Result<()> {
     }
 }
 
-pub fn encode(mut writer: &mut impl Write, data: &[u8]) -> std::io::Result<()> {
+pub fn encode(mut writer: &mut impl Write, data: &[u8]) -> core::io::Result<()> {
     let mut encoder = DeflateEncoder::new(&mut writer, Compression::default());
     encoder.write_all(data)?;
     encoder.finish()?;
     Ok(())
 }
 
-pub fn decode(data: impl Read) -> std::io::Result<Vec<u8>> {
+pub fn decode(data: impl Read) -> core::io::Result<Vec<u8>> {
     let mut decoded = vec![];
     let mut decoder = DeflateDecoder::new(data);
     decoder.read_to_end(&mut decoded)?;
@@ -162,7 +162,7 @@ pub fn clear_dir(path: impl AsRef<Path>) -> Result<()> {
 
 pub fn filename(path: &Path) -> &str {
     path.file_name()
-        .and_then(std::ffi::OsStr::to_str)
+        .and_then(core::ffi::OsStr::to_str)
         .unwrap_or_else(|| {
             warn!("invalid path without file_name: {path:?}");
             "??"

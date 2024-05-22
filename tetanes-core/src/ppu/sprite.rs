@@ -3,7 +3,7 @@
 //! See: <https://www.nesdev.org/wiki/PPU_OAM>
 
 use serde::{Deserialize, Serialize};
-use std::fmt;
+use core::fmt;
 
 /// PPU OAM Sprite entry.
 ///

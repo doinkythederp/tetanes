@@ -14,59 +14,62 @@ use crate::{
     ppu::Ppu,
     video::{Video, VideoFilter},
 };
+use crate::{io::Read, Path, PathBuf};
+use alloc::{
+    format,
+    string::{String, ToString},
+    vec,
+    vec::Vec,
+};
 use bitflags::bitflags;
 use serde::{Deserialize, Serialize};
-use std::{
-    io::Read,
-    path::{Path, PathBuf},
-};
-use thiserror::Error;
+use snafu::Snafu;
 use tracing::{error, info};
 
 /// Result returned from [`ControlDeck`] methods.
-pub type Result<T> = std::result::Result<T, Error>;
+pub type Result<T> = core::result::Result<T, Error>;
 
 /// Errors that [`ControlDeck`] can return.
-#[derive(Error, Debug)]
+#[derive(Snafu, Debug)]
 #[must_use]
 pub enum Error {
     /// [`Cart`] error when loading a ROM.
-    #[error(transparent)]
-    Cart(#[from] cart::Error),
+    #[snafu(display("{source}"))]
+    Cart { source: cart::Error },
     /// Battery-backed RAM error.
-    #[error("sram error: {0:?}")]
-    Sram(fs::Error),
+    #[snafu(display("sram error: {source:?}"))]
+    Sram { source: fs::Error },
     /// Save state error.
-    #[error("save state error: {0:?}")]
-    SaveState(fs::Error),
+    #[snafu(display("save state error: {source:?}"))]
+    SaveState { source: fs::Error },
     /// Operational error indicating a ROM must be loaded first.
-    #[error("no rom is loaded")]
+    #[snafu(display("no rom is loaded"))]
     RomNotLoaded,
     /// CPU state is corrupted and emulation can't continue. Could be due to a bad ROM image or a
     /// corrupt save state.
-    #[error("cpu state is corrupted")]
+    #[snafu(display("cpu state is corrupted"))]
     CpuCorrupted,
     /// Invalid Game Genie code error.
-    #[error(transparent)]
-    InvalidGenieCode(#[from] genie::Error),
+    #[snafu(display("{source}"))]
+    InvalidGenieCode { source: genie::Error },
     /// Invalid file path.
-    #[error("invalid file path {0:?}")]
-    InvalidFilePath(PathBuf),
-    #[error("unimplemented mapper `{0}`")]
-    UnimplementedMapper(u16),
+    #[snafu(display("invalid file path {path:?}"))]
+    InvalidFilePath { path: PathBuf },
+    #[snafu(display("unimplemented mapper `{mapper}`"))]
+    UnimplementedMapper { mapper: u16 },
     /// Filesystem error.
-    #[error(transparent)]
-    Fs(#[from] fs::Error),
+    #[snafu(display("{source}"))]
+    Fs { source: fs::Error },
     /// IO error.
-    #[error("{context}: {source:?}")]
+    #[snafu(display("{context}: {source:?}"))]
     Io {
         context: String,
-        source: std::io::Error,
+        source: crate::io::Error,
     },
 }
 
 impl Error {
-    pub fn io(source: std::io::Error, context: impl Into<String>) -> Self {
+    pub fn io(source: crate::io::Error, context: impl Into<String>) -> Self {
         Self::Io {
             context: context.into(),
             source,
@@ -153,7 +156,10 @@ impl Config {
     #[inline]
     #[must_use]
     pub fn default_data_dir() -> Option<PathBuf> {
-        dirs::data_local_dir().map(|dir| dir.join(Self::BASE_DIR))
+        #[cfg(target_vendor = "vex")]
+        return None;
+        #[cfg(not(target_vendor = "vex"))]
+        return dirs::data_local_dir().map(|dir| dir.join(Self::BASE_DIR));
     }
 
     /// Returns the directory used to store battery-backed Cart RAM.
@@ -312,8 +318,8 @@ impl ControlDeck {
     /// # Errors
     ///
     /// If there is any issue loading the ROM, then an error is returned.
-    pub fn load_rom_path(&mut self, path: impl AsRef<std::path::Path>) -> Result<LoadedRom> {
-        use std::{fs::File, io::BufReader};
+    pub fn load_rom_path(&mut self, path: impl AsRef<crate::Path>) -> Result<LoadedRom> {
+        use crate::{BufReader, File};
 
         let path = path.as_ref();
         let filename = fs::filename(path);
@@ -692,9 +698,9 @@ impl ControlDeck {
 
         // Clock current frame and save state so we can rewind
         self.clock_frame()?;
-        let frame = std::mem::take(&mut self.cpu.bus.ppu.frame.buffer);
+        let frame = core::mem::take(&mut self.cpu.bus.ppu.frame.buffer);
         // Save state so we can rewind
-        let state = bincode::serialize(&self.cpu)
+        let state = bincode::encode_to_vec(&self.cpu, Default::default())
             .map_err(|err| fs::Error::SerializationFailed(err.to_string()))?;
 
         // Clock additional frames and discard video/audio
@@ -709,7 +715,7 @@ impl ControlDeck {
         let result = self.clock_frame_output(handle_output)?;
 
         // Restore back to current frame
-        let mut state = bincode::deserialize::<Cpu>(&state)
+        let mut state = bincode::decode_from_slice::<Cpu>(&state, Default::default())
             .map_err(|err| fs::Error::DeserializationFailed(err.to_string()))?;
         state.bus.ppu.frame.buffer = frame;
         self.load_cpu(state);
@@ -737,9 +743,9 @@ impl ControlDeck {
 
         // Clock current frame and save state so we can rewind
         self.clock_frame()?;
-        let frame = std::mem::take(&mut self.cpu.bus.ppu.frame.buffer);
+        let frame = core::mem::take(&mut self.cpu.bus.ppu.frame.buffer);
         // Save state so we can rewind
-        let state = bincode::serialize(&self.cpu)
+        let state = bincode::encode_to_vec(&self.cpu, Default::default())
             .map_err(|err| fs::Error::SerializationFailed(err.to_string()))?;
 
         // Clock additional frames and discard video/audio
@@ -752,7 +758,7 @@ impl ControlDeck {
         let cycles = self.clock_frame_into(frame_buffer, audio_samples)?;
 
         // Restore back to current frame
-        let mut state = bincode::deserialize::<Cpu>(&state)
+        let mut state = bincode::decode_from_slice::<Cpu>(&state, Default::default())
             .map_err(|err| fs::Error::DeserializationFailed(err.to_string()))?;
         state.bus.ppu.frame.buffer = frame;
         self.load_cpu(state);

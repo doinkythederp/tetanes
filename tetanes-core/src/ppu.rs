@@ -7,13 +7,13 @@ use crate::{
     mem::{Access, Mem},
     ppu::{bus::Bus, frame::Frame},
 };
+use core::cmp::Ordering;
 use ctrl::Ctrl;
 use mask::Mask;
 use scroll::Scroll;
 use serde::{Deserialize, Serialize};
 use sprite::Sprite;
 use status::Status;
-use std::cmp::Ordering;
 use tracing::trace;
 
 pub mod bus;
@@ -1192,8 +1192,8 @@ impl Reset for Ppu {
     }
 }
 
-impl std::fmt::Debug for Ppu {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Debug for Ppu {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("Ppu")
             .field("region", &self.region)
             .field("cycle_count", &self.cycle_count)

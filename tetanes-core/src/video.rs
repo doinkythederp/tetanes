@@ -1,12 +1,12 @@
 //! Video output and filtering.
 
 use crate::ppu::Ppu;
-use serde::{Deserialize, Serialize};
-use std::{
+use core::{
     f64::consts::PI,
     ops::{Deref, DerefMut},
     sync::OnceLock,
 };
+use serde::{Deserialize, Serialize};
 
 #[derive(Default, Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[must_use]
@@ -172,8 +172,8 @@ impl Video {
     }
 }
 
-impl std::fmt::Debug for Video {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Debug for Video {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("Video")
             .field("filter", &self.filter)
             .finish()

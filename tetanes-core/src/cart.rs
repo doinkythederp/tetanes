@@ -3,6 +3,7 @@
 use crate::{
     common::{NesRegion, Regional},
     fs,
+    io::{BufRead, Read},
     mapper::{
         m024_m026_vrc6::Revision as Vrc6Revision, m034_nina001::Nina001, Axrom, Bf909x, Bnrom,
         Cnrom, ColorDreams, Exrom, Fxrom, Gxrom, Mapper, Mmc1Revision, Nrom, Pxrom, Sxrom, Txrom,
@@ -10,39 +11,41 @@ use crate::{
     },
     mem::RamState,
     ppu::Mirroring,
+    BufReader, File, Path,
+};
+use alloc::{
+    format,
+    string::{String, ToString},
+    vec,
+    vec::Vec,
 };
 use serde::{Deserialize, Serialize};
-use std::{
-    fs::File,
-    io::{BufReader, Read},
-    path::Path,
-};
-use thiserror::Error;
+use snafu::Snafu;
 use tracing::{debug, error, info};
 
 const PRG_ROM_BANK_SIZE: usize = 0x4000;
 const CHR_ROM_BANK_SIZE: usize = 0x2000;
 
-pub type Result<T> = std::result::Result<T, Error>;
+pub type Result<T> = core::result::Result<T, Error>;
 
-#[derive(Error, Debug)]
+#[derive(Snafu, Debug)]
 #[must_use]
 pub enum Error {
-    #[error("invalid nes header (found: ${value:04X} at byte: {byte}). {message}")]
+    #[snafu(display("invalid nes header (found: ${value:04X} at byte: {byte}). {message}"))]
     InvalidHeader {
         byte: u8,
         value: u8,
         message: String,
     },
-    #[error("{context}: {source:?}")]
+    #[snafu(display("{context}: {source:?}"))]
     Io {
         context: String,
-        source: std::io::Error,
+        source: crate::io::Error,
     },
 }
 
 impl Error {
-    pub fn io(source: std::io::Error, context: impl Into<String>) -> Self {
+    pub fn io(source: crate::io::Error, context: impl Into<String>) -> Self {
         Self::Io {
             context: context.into(),
             source,
@@ -123,7 +126,7 @@ impl Cart {
         let prg_rom_len = (header.prg_rom_banks as usize) * PRG_ROM_BANK_SIZE;
         let mut prg_rom = vec![0x00; prg_rom_len];
         rom_data.read_exact(&mut prg_rom).map_err(|err| {
-            if let std::io::ErrorKind::UnexpectedEof = err.kind() {
+            if let crate::io::ErrorKind::UnexpectedEof = err.kind() {
                 Error::InvalidHeader {
                     byte: 4,
                     value: header.prg_rom_banks as u8,
@@ -144,7 +147,7 @@ impl Cart {
         let mut chr_ram = vec![];
         if header.chr_rom_banks > 0 {
             rom_data.read_exact(&mut chr_rom).map_err(|err| {
-                if let std::io::ErrorKind::UnexpectedEof = err.kind() {
+                if let crate::io::ErrorKind::UnexpectedEof = err.kind() {
                     Error::InvalidHeader {
                         byte: 5,
                         value: header.chr_rom_banks as u8,
@@ -385,8 +388,8 @@ impl Regional for Cart {
     }
 }
 
-impl std::fmt::Display for Cart {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
+impl core::fmt::Display for Cart {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::result::Result<(), core::fmt::Error> {
         write!(
             f,
             "{} - {}, CHR-ROM: {}K, CHR-RAM: {}K, PRG-ROM: {}K, PRG-RAM: {}K, EX-RAM: {}K, Mirroring: {:?}, Battery: {}",
@@ -403,8 +406,8 @@ impl std::fmt::Display for Cart {
     }
 }
 
-impl std::fmt::Debug for Cart {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
+impl core::fmt::Debug for Cart {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::result::Result<(), core::fmt::Error> {
         f.debug_struct("Cart")
             .field("name", &self.name)
             .field("header", &self.header)
@@ -476,7 +479,7 @@ impl NesHeader {
     pub fn load<F: Read>(rom_data: &mut F) -> Result<Self> {
         let mut header = [0u8; 16];
         rom_data.read_exact(&mut header).map_err(|err| {
-            if let std::io::ErrorKind::UnexpectedEof = err.kind() {
+            if let crate::io::ErrorKind::UnexpectedEof = err.kind() {
                 Error::InvalidHeader {
                     byte: 0,
                     value: 0,
@@ -876,8 +879,8 @@ impl NesHeader {
     }
 }
 
-impl std::fmt::Debug for NesHeader {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
+impl core::fmt::Debug for NesHeader {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::result::Result<(), core::fmt::Error> {
         f.debug_struct("NesHeader")
             .field("version", &self.variant)
             .field("mapper_num", &format_args!("{:03}", &self.mapper_num))
@@ -893,7 +896,7 @@ impl std::fmt::Debug for NesHeader {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "std"))]
 mod tests {
     use super::*;
 

@@ -299,8 +299,8 @@ impl Reset for Sxrom {
 impl Regional for Sxrom {}
 impl Sram for Sxrom {}
 
-impl std::fmt::Debug for Sxrom {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Debug for Sxrom {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("SxRom")
             .field("regs", &self.regs)
             .field("submapper_num", &self.submapper_num)
@@ -315,8 +315,8 @@ impl std::fmt::Debug for Sxrom {
     }
 }
 
-impl std::fmt::Debug for Regs {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Debug for Regs {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("SxRegs")
             .field("write_just_occurred", &self.write_just_occurred)
             .field(

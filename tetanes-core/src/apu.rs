@@ -15,8 +15,9 @@ use crate::{
     common::{Clock, ClockTo, NesRegion, Regional, Reset, ResetKind, Sample},
     cpu::{Cpu, Irq},
 };
+use alloc::{vec, vec::Vec};
 use serde::{Deserialize, Serialize};
-use thiserror::Error;
+use snafu::Snafu;
 use tracing::{trace, warn};
 
 pub mod dmc;
@@ -31,9 +32,9 @@ pub mod length_counter;
 pub mod timer;
 
 /// Error when parsing `Channel` from a `usize`.
-#[derive(Error, Debug)]
+#[derive(Snafu, Debug)]
 #[must_use]
-#[error("failed to parse `Channel`")]
+#[snafu(display("failed to parse `Channel`"))]
 pub struct ParseChannelError;
 
 /// [`Apu`] Channel.
@@ -592,8 +593,8 @@ impl Reset for Apu {
     }
 }
 
-impl std::fmt::Debug for Apu {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
+impl core::fmt::Debug for Apu {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::result::Result<(), core::fmt::Error> {
         f.debug_struct("Apu")
             .field("cpu_cycle", &self.cpu_cycle)
             .field("master_cycle", &self.master_cycle)

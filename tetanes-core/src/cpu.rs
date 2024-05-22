@@ -20,7 +20,7 @@ use instr::{
     },
 };
 use serde::{Deserialize, Serialize};
-use std::{
+use core::{
     cell::Cell,
     fmt::{self, Write},
 };
@@ -182,10 +182,10 @@ impl Cpu {
         // Because we don't want to serialize the entire ROM in save states, extract out the
         // already loaded ROM data if it's not provided
         if cpu.bus.prg_rom.is_empty() {
-            cpu.bus.prg_rom = std::mem::take(&mut self.bus.prg_rom);
+            cpu.bus.prg_rom = core::mem::take(&mut self.bus.prg_rom);
         };
         if cpu.bus.ppu.bus.chr_rom.is_empty() {
-            cpu.bus.ppu.bus.chr_rom = std::mem::take(&mut self.bus.ppu.bus.chr_rom);
+            cpu.bus.ppu.bus.chr_rom = core::mem::take(&mut self.bus.ppu.bus.chr_rom);
         };
         *self = cpu;
     }
@@ -1053,7 +1053,7 @@ impl Reset for Cpu {
 }
 
 impl fmt::Debug for Cpu {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> std::result::Result<(), fmt::Error> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> core::result::Result<(), fmt::Error> {
         f.debug_struct("Cpu")
             .field("cycle", &self.cycle)
             .field("pc", &format_args!("${:04X}", self.pc))

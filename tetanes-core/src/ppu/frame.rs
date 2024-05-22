@@ -4,8 +4,9 @@ use crate::{
     common::{Reset, ResetKind},
     ppu::Ppu,
 };
+use alloc::{vec, vec::Vec};
+use core::ops::{Deref, DerefMut};
 use serde::{Deserialize, Serialize};
-use std::ops::{Deref, DerefMut};
 
 /// PPU frame.
 #[derive(Clone, Serialize, Deserialize)]
@@ -13,8 +14,8 @@ use std::ops::{Deref, DerefMut};
 #[must_use]
 pub struct Buffer(Vec<u16>);
 
-impl std::fmt::Debug for Buffer {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Debug for Buffer {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "Buffer({} elements)", self.0.len())
     }
 }

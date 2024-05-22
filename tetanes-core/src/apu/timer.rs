@@ -66,7 +66,7 @@ impl Reset for Timer {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(feature = "std", test))]
 mod tests {
     use super::*;
 

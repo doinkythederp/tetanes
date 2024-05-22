@@ -1,12 +1,12 @@
 //! Game Genie code parsing.
 
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, sync::OnceLock};
+use core::{collections::HashMap, sync::OnceLock};
 use thiserror::Error;
 
 static GENIE_MAP: OnceLock<HashMap<char, u8>> = OnceLock::new();
 
-pub type Result<T> = std::result::Result<T, Error>;
+pub type Result<T> = core::result::Result<T, Error>;
 
 #[derive(Error, Debug)]
 #[error("invalid genie code {code:?}. {kind}")]
@@ -150,8 +150,8 @@ impl GenieCode {
     }
 }
 
-impl std::fmt::Display for GenieCode {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Display for GenieCode {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", &self.code)
     }
 }

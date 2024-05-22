@@ -1,5 +1,10 @@
 [build]
 rustflags = ["-Z", "threads=8"]
+target = "./armv7a-vexos-eabi.json"
+
+[unstable]
+build-std = ["core", "compiler_builtins", "alloc"]
+build-std-features = ["compiler-builtins-mem"]
 
 [target.'cfg(target_arch = "wasm32")']
 rustflags = ["-Z", "threads=8", "--cfg=web_sys_unstable_apis"]

@@ -16,6 +16,7 @@ use crate::{
     mem::MemBanks,
     ppu::{bus::PpuAddr, Mirroring, Ppu},
 };
+use alloc::{vec, vec::Vec};
 use bitflags::bitflags;
 use serde::{Deserialize, Serialize};
 use tracing::warn;
@@ -1061,8 +1062,8 @@ impl Reset for Exrom {
 
 impl Sram for Exrom {}
 
-impl std::fmt::Debug for Exrom {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Debug for Exrom {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("Exrom")
             .field("regs", &self.regs)
             .field("mirroring", &self.mirroring)
