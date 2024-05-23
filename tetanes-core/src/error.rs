@@ -1,36 +1,38 @@
 //! Error handling.
 
-use core::path::PathBuf;
-use thiserror::Error;
+use alloc::string::String;
+use snafu::Snafu;
+
+use crate::PathBuf;
 
 pub type Result<T> = core::result::Result<T, Error>;
 
-#[derive(Error, Debug)]
+#[derive(Snafu, Debug)]
 #[must_use]
 pub enum Error {
-    #[error("invalid save version (expected {expected:?}, found: {found:?})")]
+    #[snafu(display("invalid save version (expected {expected:?}, found: {found:?})"))]
     InvalidSaveVersion {
         expected: &'static str,
         found: String,
     },
-    #[error("invalid tetanes header (path: {path:?}. {error}")]
+    #[snafu(display("invalid tetanes header (path: {path:?}. {error}"))]
     InvalidSaveHeader { path: PathBuf, error: String },
-    #[error("invalid configuration {value:?} for {field:?}")]
+    #[snafu(display("invalid configuration {value:?} for {field:?}"))]
     InvalidConfig { field: &'static str, value: String },
-    #[error("{context}: {source:?}")]
+    #[snafu(display("{context}: {inner:?}"))]
     Io {
         context: String,
-        source: crate::io::Error,
+        inner: crate::io::Error,
     },
-    #[error("{0}")]
-    Unknown(String),
+    #[snafu(display("{inner}"))]
+    Unknown { inner: String },
 }
 
 impl Error {
-    pub fn io(source: crate::io::Error, context: impl Into<String>) -> Self {
+    pub fn io(inner: crate::io::Error, context: impl Into<String>) -> Self {
         Self::Io {
             context: context.into(),
-            source,
+            inner,
         }
     }
 }

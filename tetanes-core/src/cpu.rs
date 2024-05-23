@@ -6,8 +6,14 @@ use crate::{
     bus::Bus,
     common::{Clock, ClockTo, NesRegion, Regional, Reset, ResetKind},
     mem::{Access, Mem},
+    RwLock,
 };
+use alloc::string::String;
 use bitflags::bitflags;
+use core::{
+    cell::Cell,
+    fmt::{self, Write},
+};
 use instr::{
     AddrMode::{ABS, ABX, ABY, ACC, IDX, IDY, IMM, IMP, IND, REL, ZP0, ZPX, ZPY},
     Instr,
@@ -20,22 +26,19 @@ use instr::{
     },
 };
 use serde::{Deserialize, Serialize};
-use core::{
-    cell::Cell,
-    fmt::{self, Write},
-};
 use tracing::trace;
 
 pub mod instr;
 
-thread_local! {
-    static NMI: Cell<bool> = const { Cell::new(false) };
-    static IRQS: Cell<Irq> = const { Cell::new(Irq::empty()) };
-    static DMAS: Cell<Dma> = const { Cell::new(Dma::empty()) };
-    static DMA_HALT: Cell<bool> = const { Cell::new(false) };
-    static DMA_DUMMY_READ: Cell<bool> = const { Cell::new(false) };
-    static DMA_OAM_ADDR: Cell<u16> = const { Cell::new(0x0000) };
-}
+// FIXME: should switch back to thread locals
+// thread_local! {
+static NMI: RwLock<bool> = { RwLock::new(false) };
+static IRQS: RwLock<Irq> = { RwLock::new(Irq::empty()) };
+static DMAS: RwLock<Dma> = { RwLock::new(Dma::empty()) };
+static DMA_HALT: RwLock<bool> = { RwLock::new(false) };
+static DMA_DUMMY_READ: RwLock<bool> = { RwLock::new(false) };
+static DMA_OAM_ADDR: RwLock<u16> = { RwLock::new(0x0000) };
+// }
 
 bitflags! {
     #[derive(Default, Serialize, Deserialize, Debug, Copy, Clone)]
@@ -218,90 +221,108 @@ impl Cpu {
     #[inline]
     #[must_use]
     pub fn nmi_pending() -> bool {
-        NMI.get()
+        *NMI.read()
     }
 
     #[inline]
     pub fn set_nmi() {
-        NMI.set(true);
+        *NMI.write() = true;
     }
 
     #[inline]
     pub fn clear_nmi() {
-        NMI.set(false);
+        *NMI.write() = false;
     }
 
     #[inline]
     pub fn irqs() -> Irq {
-        IRQS.get()
+        // IRQS.get()
+        *IRQS.read()
     }
 
     #[inline]
     #[must_use]
     pub fn has_irq(irq: Irq) -> bool {
-        IRQS.get().contains(irq)
+        // IRQS.get().contains(irq)
+        IRQS.read().contains(irq)
     }
 
     #[inline]
     pub fn set_irq(irq: Irq) {
-        IRQS.set(IRQS.get() | irq);
+        // IRQS.set(IRQS.get() | irq);
+        *IRQS.write() |= irq;
     }
 
     #[inline]
     pub fn clear_irq(irq: Irq) {
-        IRQS.set(IRQS.get() & !irq);
+        // IRQS.set(IRQS.get() & !irq);
+        *IRQS.write() &= !irq;
     }
 
     #[inline]
     pub fn start_dmc_dma() {
-        DMAS.set(DMAS.get() | Dma::DMC);
-        DMA_HALT.set(true);
-        DMA_DUMMY_READ.set(true);
+        // DMAS.set(DMAS.get() | Dma::DMC);
+        // DMA_HALT.set(true);
+        // DMA_DUMMY_READ.set(true);
+        *DMAS.write() |= Dma::DMC;
+        *DMA_HALT.write() = true;
+        *DMA_DUMMY_READ.write() = true;
     }
 
     #[inline]
     pub fn start_oam_dma(addr: u16) {
-        DMAS.set(DMAS.get() | Dma::OAM);
-        DMA_HALT.set(true);
-        DMA_OAM_ADDR.set(addr);
+        // DMAS.set(DMAS.get() | Dma::OAM);
+        // DMA_HALT.set(true);
+        // DMA_OAM_ADDR.set(addr);
+        *DMAS.write() |= Dma::OAM;
+        *DMA_HALT.write() = true;
+        *DMA_OAM_ADDR.write() = addr;
     }
 
     #[inline]
     #[must_use]
     pub fn halt_for_dma() -> bool {
-        DMA_HALT.get()
+        // DMA_HALT.get()
+        *DMA_HALT.read()
     }
 
     #[inline]
     pub fn dma_oam_addr() -> u16 {
-        DMA_OAM_ADDR.get()
+        // DMA_OAM_ADDR.get()
+        *DMA_OAM_ADDR.read()
     }
 
     #[inline]
     #[must_use]
     pub fn dmas_running() -> Option<(bool, bool)> {
-        let dmas = DMAS.get();
+        // let dmas = DMAS.get();
+        // (!dmas.is_empty()).then_some((dmas.contains(Dma::DMC), dmas.contains(Dma::OAM)))
+        let dmas = *DMAS.read();
         (!dmas.is_empty()).then_some((dmas.contains(Dma::DMC), dmas.contains(Dma::OAM)))
     }
 
     #[inline]
     pub fn clear_dma(dma: Dma) {
-        DMAS.set(DMAS.get() & !dma);
+        // DMAS.set(DMAS.get() & !dma);
+        *DMAS.write() &= !dma;
     }
 
     #[inline]
     pub fn clear_dma_halt() {
-        DMA_HALT.set(false);
+        // DMA_HALT.set(false);
+        *DMA_HALT.write() = false;
     }
 
     #[inline]
     pub fn dma_dummy_read() -> bool {
-        DMA_DUMMY_READ.get()
+        // DMA_DUMMY_READ.get()
+        *DMA_DUMMY_READ.read()
     }
 
     #[inline]
     pub fn clear_dma_dummy_read() {
-        DMA_DUMMY_READ.set(false);
+        // DMA_DUMMY_READ.set(false);
+        *DMA_DUMMY_READ.write() = false;
     }
 
     /// Process an interrupted request.
@@ -1078,7 +1099,7 @@ impl fmt::Debug for Cpu {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "std"))]
 mod tests {
     use crate::cart::Cart;
 

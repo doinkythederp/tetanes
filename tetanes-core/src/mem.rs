@@ -1,5 +1,6 @@
 //! Memory and Bankswitching implementations.
 
+use alloc::{vec, vec::Vec};
 use core::str::FromStr;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
@@ -75,7 +76,7 @@ impl RamState {
             RamState::AllZeros => ram.fill(0x00),
             RamState::AllOnes => ram.fill(0xFF),
             RamState::Random => {
-                let mut rng = rand::thread_rng();
+                let mut rng = crate::sys::rand::rng();
                 for val in ram {
                     *val = rng.gen_range(0x00..=0xFF);
                 }
@@ -238,7 +239,7 @@ impl core::fmt::Debug for MemBanks {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "std"))]
 mod tests {
     use super::*;
 

@@ -21,9 +21,10 @@ use alloc::{
     vec,
     vec::Vec,
 };
+use bincode::serde::{BorrowCompat, Compat};
 use bitflags::bitflags;
 use serde::{Deserialize, Serialize};
-use snafu::Snafu;
+use snafu::{ResultExt, Snafu};
 use tracing::{error, info};
 
 /// Result returned from [`ControlDeck`] methods.
@@ -61,18 +62,18 @@ pub enum Error {
     #[snafu(display("{source}"))]
     Fs { source: fs::Error },
     /// IO error.
-    #[snafu(display("{context}: {source:?}"))]
+    #[snafu(display("{context}: {inner:?}"))]
     Io {
         context: String,
-        source: crate::io::Error,
+        inner: crate::io::Error,
     },
 }
 
 impl Error {
-    pub fn io(source: crate::io::Error, context: impl Into<String>) -> Self {
+    pub fn io(inner: crate::io::Error, context: impl Into<String>) -> Self {
         Self::Io {
             context: context.into(),
-            source,
+            inner,
         }
     }
 }
@@ -136,7 +137,7 @@ pub struct Config {
     /// Headless mode.
     pub headless_mode: HeadlessMode,
     /// Data directory for storing battery-backed RAM.
-    pub data_dir: Option<PathBuf>,
+    pub data_dir: Option<String>,
     /// Which mapper revisions to emulate for any ROM loaded that uses this mapper.
     pub mapper_revisions: MapperRevisionsConfig,
     /// Whether to emulate PPU warmup where writes to certain registers are ignored. Can result in
@@ -166,7 +167,9 @@ impl Config {
     #[inline]
     #[must_use]
     pub fn sram_dir(&self) -> Option<PathBuf> {
-        self.data_dir.as_ref().map(|dir| dir.join(Self::SRAM_DIR))
+        self.data_dir
+            .as_ref()
+            .map(|dir| PathBuf::from(dir).join(Self::SRAM_DIR))
     }
 }
 
@@ -183,7 +186,7 @@ impl Default for Config {
             concurrent_dpad: false,
             channels_enabled: [true; Apu::MAX_CHANNEL_COUNT],
             headless_mode: HeadlessMode::empty(),
-            data_dir: Self::default_data_dir(),
+            data_dir: Self::default_data_dir().map(|s| s.to_str().unwrap().to_string()),
             mapper_revisions: MapperRevisionsConfig::default(),
             emulate_ppu_warmup: false,
         }
@@ -288,9 +291,12 @@ impl ControlDeck {
     pub fn load_rom<S: ToString, F: Read>(&mut self, name: S, rom: &mut F) -> Result<LoadedRom> {
         let name = name.to_string();
         self.unload_rom()?;
-        let cart = Cart::from_rom(&name, rom, self.cpu.bus.ram_state)?;
+        let cart = Cart::from_rom(&name, rom, self.cpu.bus.ram_state).context(CartSnafu)?;
         if cart.mapper.is_none() {
-            return Err(Error::UnimplementedMapper(cart.mapper_num()));
+            return UnimplementedMapperSnafu {
+                mapper: cart.mapper_num(),
+            }
+            .fail();
         }
         let loaded_rom = LoadedRom {
             name: name.clone(),
@@ -463,12 +469,15 @@ impl ControlDeck {
     pub fn save_sram(&self, path: impl AsRef<Path>) -> Result<()> {
         if let Some(true) = self.cart_battery_backed() {
             let path = path.as_ref();
-            if path.is_dir() {
-                return Err(Error::InvalidFilePath(path.to_path_buf()));
+            #[cfg(not(target_vendor = "vex"))]
+            {
+                if path.is_dir() {
+                    return Err(Error::InvalidFilePath(path.to_path_buf()));
+                }
             }
 
             info!("saving SRAM...");
-            self.cpu.bus.save(path).map_err(Error::Sram)?;
+            self.cpu.bus.save(path).context(SramSnafu)?;
         }
         Ok(())
     }
@@ -481,13 +490,17 @@ impl ControlDeck {
     pub fn load_sram(&mut self, path: impl AsRef<Path>) -> Result<()> {
         if let Some(true) = self.cart_battery_backed() {
             let path = path.as_ref();
-            if path.is_dir() {
-                return Err(Error::InvalidFilePath(path.to_path_buf()));
+            #[cfg(not(target_vendor = "vex"))]
+            {
+                if path.is_dir() {
+                    return Err(Error::InvalidFilePath(path.to_path_buf()));
+                }
+                if !path.is_file() {
+                    return Ok(());
+                }
             }
-            if path.is_file() {
-                info!("loading SRAM...");
-                self.cpu.bus.load(path).map_err(Error::Sram)?;
-            }
+            info!("loading SRAM...");
+            self.cpu.bus.load(path).context(SramSnafu)?;
         }
         Ok(())
     }
@@ -502,7 +515,7 @@ impl ControlDeck {
             return Err(Error::RomNotLoaded);
         };
         let path = path.as_ref();
-        fs::save(path, &self.cpu).map_err(Error::SaveState)
+        fs::save(path, &self.cpu).context(SaveStateSnafu)
     }
 
     /// Load the console with data saved from a save state, if it exists.
@@ -515,16 +528,18 @@ impl ControlDeck {
             return Err(Error::RomNotLoaded);
         };
         let path = path.as_ref();
-        if path.exists() {
-            fs::load::<Cpu>(path)
-                .map_err(Error::SaveState)
-                .map(|mut cpu| {
-                    cpu.bus.input.clear();
-                    self.load_cpu(cpu)
-                })
-        } else {
-            Ok(())
+        #[cfg(not(target_vendor = "vex"))]
+        {
+            if !path.exists() {
+                return Ok(());
+            }
         }
+        fs::load::<Cpu>(path)
+            .context(SaveStateSnafu)
+            .map(|mut cpu| {
+                cpu.bus.input.clear();
+                self.load_cpu(cpu)
+            })
     }
 
     /// Load the raw underlying frame buffer from the PPU for further processing.
@@ -700,8 +715,11 @@ impl ControlDeck {
         self.clock_frame()?;
         let frame = core::mem::take(&mut self.cpu.bus.ppu.frame.buffer);
         // Save state so we can rewind
-        let state = bincode::encode_to_vec(&self.cpu, Default::default())
-            .map_err(|err| fs::Error::SerializationFailed(err.to_string()))?;
+        let state = bincode::encode_to_vec(BorrowCompat(&self.cpu), bincode::config::standard())
+            .map_err(|err| fs::Error::SerializationFailed {
+                inner: err.to_string(),
+            })
+            .context(FsSnafu)?;
 
         // Clock additional frames and discard video/audio
         self.cpu.bus.ppu.skip_rendering = true;
@@ -715,8 +733,14 @@ impl ControlDeck {
         let result = self.clock_frame_output(handle_output)?;
 
         // Restore back to current frame
-        let mut state = bincode::decode_from_slice::<Cpu>(&state, Default::default())
-            .map_err(|err| fs::Error::DeserializationFailed(err.to_string()))?;
+        let mut state =
+            bincode::decode_from_slice::<Compat<Cpu>, _>(&state, bincode::config::standard())
+                .map_err(|err| fs::Error::DeserializationFailed {
+                    inner: err.to_string(),
+                })
+                .context(FsSnafu)?
+                .0
+                 .0;
         state.bus.ppu.frame.buffer = frame;
         self.load_cpu(state);
 
@@ -745,8 +769,11 @@ impl ControlDeck {
         self.clock_frame()?;
         let frame = core::mem::take(&mut self.cpu.bus.ppu.frame.buffer);
         // Save state so we can rewind
-        let state = bincode::encode_to_vec(&self.cpu, Default::default())
-            .map_err(|err| fs::Error::SerializationFailed(err.to_string()))?;
+        let state = bincode::encode_to_vec(BorrowCompat(&self.cpu), bincode::config::standard())
+            .map_err(|err| fs::Error::SerializationFailed {
+                inner: err.to_string(),
+            })
+            .context(FsSnafu)?;
 
         // Clock additional frames and discard video/audio
         for _ in 1..run_ahead {
@@ -758,8 +785,14 @@ impl ControlDeck {
         let cycles = self.clock_frame_into(frame_buffer, audio_samples)?;
 
         // Restore back to current frame
-        let mut state = bincode::decode_from_slice::<Cpu>(&state, Default::default())
-            .map_err(|err| fs::Error::DeserializationFailed(err.to_string()))?;
+        let mut state =
+            bincode::decode_from_slice::<Compat<Cpu>, _>(&state, bincode::config::standard())
+                .map_err(|err| fs::Error::DeserializationFailed {
+                    inner: err.to_string(),
+                })
+                .context(FsSnafu)?
+                .0
+                 .0;
         state.bus.ppu.frame.buffer = frame;
         self.load_cpu(state);
 
@@ -932,7 +965,9 @@ impl ControlDeck {
     /// If the genie code is invalid, an error is returned.
     #[inline]
     pub fn add_genie_code(&mut self, genie_code: String) -> Result<()> {
-        self.cpu.bus.add_genie_code(GenieCode::new(genie_code)?);
+        self.cpu
+            .bus
+            .add_genie_code(GenieCode::new(genie_code).context(InvalidGenieCodeSnafu)?);
         Ok(())
     }
 

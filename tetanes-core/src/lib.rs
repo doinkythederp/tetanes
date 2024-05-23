@@ -32,11 +32,17 @@ pub mod video;
 #[cfg(not(target_vendor = "vex"))]
 pub(crate) use std::io;
 #[cfg(not(target_vendor = "vex"))]
-pub(crate) use std::path::{Path, PathBuf};
+pub(crate) use std::{
+    io,
+    path::{Path, PathBuf},
+    sync::{OnceLock, RwLock},
+};
 #[cfg(target_vendor = "vex")]
-pub(crate) use unix_path::{Path, PathBuf};
-#[cfg(target_vendor = "vex")]
-pub(crate) use vexide_core::io;
+pub(crate) use {
+    spin::{Once as OnceLock, RwLock},
+    unix_path::{Path, PathBuf},
+    vexide_core::io,
+};
 
 #[cfg(not(target_vendor = "vex"))]
 /// File Shim
@@ -50,6 +56,13 @@ pub(crate) struct File;
 impl File {
     pub fn open<P: AsRef<Path>>(_path: P) -> io::Result<File> {
         unimplemented!("file open not supported")
+    }
+}
+
+#[cfg(target_vendor = "vex")]
+impl vexide_core::io::Read for File {
+    fn read(&mut self, _buf: &mut [u8]) -> io::Result<usize> {
+        unimplemented!("file read not supported")
     }
 }
 

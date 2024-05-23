@@ -37,18 +37,18 @@ pub enum Error {
         value: u8,
         message: String,
     },
-    #[snafu(display("{context}: {source:?}"))]
+    #[snafu(display("{context}: {inner:?}"))]
     Io {
         context: String,
-        source: crate::io::Error,
+        inner: crate::io::Error,
     },
 }
 
 impl Error {
-    pub fn io(source: crate::io::Error, context: impl Into<String>) -> Self {
+    pub fn io(inner: crate::io::Error, context: impl Into<String>) -> Self {
         Self::Io {
             context: context.into(),
-            source,
+            inner,
         }
     }
 }

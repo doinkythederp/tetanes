@@ -1,15 +1,20 @@
 //! Game Genie code parsing.
 
+use crate::OnceLock;
+use alloc::{string::String, vec::Vec};
+use hashbrown::HashMap;
+use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
-use core::{collections::HashMap, sync::OnceLock};
-use thiserror::Error;
+use snafu::Snafu;
 
-static GENIE_MAP: OnceLock<HashMap<char, u8>> = OnceLock::new();
+lazy_static! {
+    static ref GENIE_MAP: HashMap<char, u8> = GenieCode::generate_genie_map();
+}
 
 pub type Result<T> = core::result::Result<T, Error>;
 
-#[derive(Error, Debug)]
-#[error("invalid genie code {code:?}. {kind}")]
+#[derive(Snafu, Debug)]
+#[snafu(display("invalid genie code {code:?}. {kind}"))]
 pub struct Error {
     code: String,
     kind: ErrorKind,
@@ -28,13 +33,13 @@ impl Error {
     }
 }
 
-#[derive(Error, Debug, Copy, Clone)]
+#[derive(Snafu, Debug, Copy, Clone)]
 #[must_use]
 pub enum ErrorKind {
-    #[error("length must be 6 or 8 characters. found `{0}`")]
-    InvalidLength(usize),
-    #[error("invalid character: `{0}`")]
-    InvalidCharacter(char),
+    #[snafu(display("length must be 6 or 8 characters. found `{inner}`"))]
+    InvalidLength { inner: usize },
+    #[snafu(display("invalid character: `{inner}`"))]
+    InvalidCharacter { inner: char },
 }
 
 /// Game Genie Code
@@ -110,17 +115,17 @@ impl GenieCode {
 
     pub fn parse(code: &str) -> Result<Vec<u8>> {
         if code.len() != 6 && code.len() != 8 {
-            return Err(Error::new(code, ErrorKind::InvalidLength(code.len())));
+            return Err(Error::new(
+                code,
+                ErrorKind::InvalidLength { inner: code.len() },
+            ));
         }
         let mut hex: Vec<u8> = Vec::with_capacity(code.len());
         for s in code.chars() {
-            if let Some(h) = GENIE_MAP
-                .get_or_init(Self::generate_genie_map)
-                .get(&s.to_ascii_uppercase())
-            {
+            if let Some(h) = GENIE_MAP.get(&s.to_ascii_uppercase()) {
                 hex.push(*h);
             } else {
-                return Err(Error::new(code, ErrorKind::InvalidCharacter(s)));
+                return Err(Error::new(code, ErrorKind::InvalidCharacter { inner: s }));
             }
         }
         Ok(hex)

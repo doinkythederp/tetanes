@@ -137,7 +137,7 @@ pub fn windowed_sinc_kernel(sample_rate: f32, cutoff: f32, window_size: usize) -
     fn blackman_window(index: usize, window_size: usize) -> f32 {
         let i = index as f32;
         let m = window_size as f32;
-        0.42 - 0.5 * ((TAU * i) / m).cos() + 0.08 * ((2.0 * TAU * i) / m).cos()
+        0.42 - 0.5 * libm::cosf((TAU * i) / m) + 0.08 * libm::cosf((2.0 * TAU * i) / m)
     }
 
     fn sinc(index: usize, fc: f32, window_size: usize) -> f32 {
@@ -147,7 +147,7 @@ pub fn windowed_sinc_kernel(sample_rate: f32, cutoff: f32, window_size: usize) -
         if index == (window_size / 2) {
             TAU * fc
         } else {
-            (TAU * fc * shifted_index).sin() / shifted_index
+            libm::sinf(TAU * fc * shifted_index) / shifted_index
         }
     }
 

@@ -7,6 +7,7 @@ use crate::{
     mem::{Access, Mem},
     ppu::{bus::Bus, frame::Frame},
 };
+use alloc::{vec, vec::Vec};
 use core::cmp::Ordering;
 use ctrl::Ctrl;
 use mask::Mask;
@@ -1240,7 +1241,7 @@ impl core::fmt::Debug for Ppu {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "std"))]
 mod tests {
     use super::*;
     use crate::{

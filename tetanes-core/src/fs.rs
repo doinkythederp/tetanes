@@ -1,13 +1,20 @@
 //! Filesystem utilities for save state and compression.
 
 use crate::sys::fs;
-use core::{
+use crate::{
     io::{Cursor, Read, Write},
-    path::{Path, PathBuf},
+    Path, PathBuf,
 };
-use flate2::{read::DeflateDecoder, write::DeflateEncoder, Compression};
+use alloc::string::{String, ToString};
+use alloc::vec::Vec;
+use alloc::{format, vec};
+use bincode::config::Configuration;
+use bincode::serde::{BorrowCompat, Compat};
+use miniz_oxide::inflate::stream::InflateState;
+use miniz_oxide::inflate::{decompress_to_vec, DecompressError};
+// use flate2::{read::DeflateDecoder, write::DeflateEncoder, Compression};
 use serde::{de::DeserializeOwned, Serialize};
-use thiserror::Error;
+use snafu::{ResultExt, Snafu};
 use tracing::warn;
 
 const SAVE_FILE_MAGIC_LEN: usize = 8;
@@ -17,42 +24,46 @@ const SAVE_VERSION: &str = "1";
 
 pub type Result<T> = core::result::Result<T, Error>;
 
-#[derive(Error, Debug)]
+#[derive(Snafu, Debug)]
 #[must_use]
 pub enum Error {
-    #[error("invalid tetanes header: {0}")]
-    InvalidHeader(String),
-    #[error("failed to write tetanes header: {0:?}")]
-    WriteHeaderFailed(crate::io::Error),
-    #[error("failed to encode data: {0:?}")]
-    EncodingFailed(crate::io::Error),
-    #[error("failed to decode data: {0:?}")]
-    DecodingFailed(crate::io::Error),
-    #[error("failed to serialize data: {0:?}")]
-    SerializationFailed(String),
-    #[error("failed to deserialize data: {0:?}")]
-    DeserializationFailed(String),
-    #[error("invalid path: {0:?}")]
-    InvalidPath(PathBuf),
-    #[error("{context}: {source:?}")]
+    #[snafu(display("invalid tetanes header: {inner}"))]
+    InvalidHeader { inner: String },
+    #[snafu(display("failed to write tetanes header: {inner:?}"))]
+    WriteHeaderFailed { inner: crate::io::Error },
+    #[snafu(display("failed to encode data: {inner:?}"))]
+    EncodingFailed { inner: crate::io::Error },
+    #[snafu(display("failed to decode data: {inner:?}"))]
+    DecodingFailed { inner: crate::io::Error },
+    #[snafu(display("failed to decompress data: {inner:?}"))]
+    DecompressionFailed { inner: DecompressError },
+    #[snafu(display("failed to serialize data: {inner:?}"))]
+    SerializationFailed { inner: String },
+    #[snafu(display("failed to deserialize data: {inner:?}"))]
+    DeserializationFailed { inner: String },
+    #[snafu(display("invalid path: {inner:?}"))]
+    InvalidPath { inner: PathBuf },
+    #[snafu(display("{context}: {inner:?}"))]
     Io {
-        source: crate::io::Error,
+        inner: crate::io::Error,
         context: String,
     },
-    #[error("{0}")]
-    Custom(String),
+    #[snafu(display("{inner}"))]
+    Custom { inner: String },
 }
 
 impl Error {
-    pub fn io(source: crate::io::Error, context: impl Into<String>) -> Self {
+    pub fn io(inner: crate::io::Error, context: impl Into<String>) -> Self {
         Self::Io {
-            source,
+            inner,
             context: context.into(),
         }
     }
 
     pub fn custom(error: impl Into<String>) -> Self {
-        Self::Custom(error.into())
+        Self::Custom {
+            inner: error.into(),
+        }
     }
 }
 
@@ -61,7 +72,7 @@ impl Error {
 /// # Errors
 ///
 /// If the header fails to write to disk, then an error is returned.
-pub(crate) fn write_header(f: &mut impl Write) -> core::io::Result<()> {
+pub(crate) fn write_header(f: &mut impl Write) -> crate::io::Result<()> {
     f.write_all(&SAVE_FILE_MAGIC)?;
     f.write_all(SAVE_VERSION.as_bytes())
 }
@@ -73,49 +84,64 @@ pub(crate) fn write_header(f: &mut impl Write) -> core::io::Result<()> {
 /// If the header fails to validate, then an error is returned.
 pub(crate) fn validate_header(f: &mut impl Read) -> Result<()> {
     let mut magic = [0u8; SAVE_FILE_MAGIC_LEN];
-    f.read_exact(&mut magic)
-        .map_err(|s| Error::InvalidHeader(s.to_string()))?;
+    f.read_exact(&mut magic).map_err(|s| {
+        InvalidHeaderSnafu {
+            inner: s.to_string(),
+        }
+        .build()
+    })?;
     if magic != SAVE_FILE_MAGIC {
-        return Err(Error::InvalidHeader(format!(
-            "invalid magic (expected {SAVE_FILE_MAGIC:?}, found: {magic:?}",
-        )));
+        return InvalidHeaderSnafu {
+            inner: format!("invalid magic (expected {SAVE_FILE_MAGIC:?}, found: {magic:?}",),
+        }
+        .fail();
     }
 
     let mut version = [0u8];
-    f.read_exact(&mut version)
-        .map_err(|s| Error::InvalidHeader(s.to_string()))?;
+    f.read_exact(&mut version).map_err(|s| {
+        InvalidHeaderSnafu {
+            inner: s.to_string(),
+        }
+        .build()
+    })?;
     if version == SAVE_VERSION.as_bytes() {
         Ok(())
     } else {
-        Err(Error::InvalidHeader(format!(
-            "invalid version (expected {SAVE_VERSION:?}, found: {version:?}",
-        )))
+        InvalidHeaderSnafu {
+            inner: format!("invalid version (expected {SAVE_VERSION:?}, found: {version:?}",),
+        }
+        .fail()
     }
 }
 
-pub fn encode(mut writer: &mut impl Write, data: &[u8]) -> core::io::Result<()> {
-    let mut encoder = DeflateEncoder::new(&mut writer, Compression::default());
-    encoder.write_all(data)?;
-    encoder.finish()?;
+pub fn encode(mut writer: &mut impl Write, data: &[u8]) -> crate::io::Result<()> {
+    let vec = miniz_oxide::deflate::compress_to_vec(data, 6);
+    writer.write_all(&vec)?;
     Ok(())
 }
 
-pub fn decode(data: impl Read) -> core::io::Result<Vec<u8>> {
-    let mut decoded = vec![];
-    let mut decoder = DeflateDecoder::new(data);
-    decoder.read_to_end(&mut decoded)?;
+pub fn decode(data: impl Read) -> Result<Vec<u8>> {
+    let encoded = data
+        .bytes()
+        .collect::<core::result::Result<Vec<u8>, _>>()
+        .map_err(|inner| Error::DecodingFailed { inner })?;
+    let mut decoded =
+        decompress_to_vec(&encoded).map_err(|inner| Error::DecompressionFailed { inner })?;
     Ok(decoded)
 }
 
 pub fn save<T>(path: impl AsRef<Path>, value: &T) -> Result<()>
 where
-    T: ?Sized + Serialize,
+    T: Serialize + ?Sized,
 {
-    let data =
-        bincode::serialize(value).map_err(|err| Error::SerializationFailed(err.to_string()))?;
+    let data = bincode::encode_to_vec(BorrowCompat(value), bincode::config::standard()).map_err(
+        |err| Error::SerializationFailed {
+            inner: err.to_string(),
+        },
+    )?;
     let mut writer = fs::writer_impl(path)?;
-    write_header(&mut writer).map_err(Error::WriteHeaderFailed)?;
-    encode(&mut writer, &data).map_err(Error::EncodingFailed)?;
+    write_header(&mut writer).map_err(|inner| Error::WriteHeaderFailed { inner })?;
+    encode(&mut writer, &data).map_err(|inner| Error::EncodingFailed { inner })?;
     Ok(())
 }
 
@@ -133,8 +159,15 @@ where
 {
     let mut reader = fs::reader_impl(path)?;
     validate_header(&mut reader)?;
-    let data = decode(&mut reader).map_err(Error::DecodingFailed)?;
-    bincode::deserialize(&data).map_err(|err| Error::DeserializationFailed(err.to_string()))
+    let data = decode(&mut reader)?;
+    Ok(
+        bincode::decode_from_slice::<Compat<T>, _>(&data, bincode::config::standard())
+            .map_err(|err| Error::DeserializationFailed {
+                inner: err.to_string(),
+            })?
+            .0
+             .0,
+    )
 }
 
 pub fn load_bytes<T>(bytes: &[u8]) -> Result<T>
@@ -143,8 +176,15 @@ where
 {
     let mut reader = Cursor::new(bytes);
     validate_header(&mut reader)?;
-    let data = decode(&mut reader).map_err(Error::DecodingFailed)?;
-    bincode::deserialize(&data).map_err(|err| Error::SerializationFailed(err.to_string()))
+    let data = decode(&mut reader)?;
+    Ok(
+        bincode::decode_from_slice::<Compat<T>, _>(&data, bincode::config::standard())
+            .map_err(|err| Error::SerializationFailed {
+                inner: err.to_string(),
+            })?
+            .0
+             .0,
+    )
 }
 
 pub fn load_raw(path: impl AsRef<Path>) -> Result<Vec<u8>> {
@@ -162,7 +202,7 @@ pub fn clear_dir(path: impl AsRef<Path>) -> Result<()> {
 
 pub fn filename(path: &Path) -> &str {
     path.file_name()
-        .and_then(core::ffi::OsStr::to_str)
+        .and_then(|s| s.to_str())
         .unwrap_or_else(|| {
             warn!("invalid path without file_name: {path:?}");
             "??"
@@ -219,7 +259,7 @@ const CRC_TABLE: [u32; 256] = [
     0xB3667A2E, 0xC4614AB8, 0x5D681B02, 0x2A6F2B94, 0xB40BBE37, 0xC30C8EA1, 0x5A05DF1B, 0x2D02EF8D,
 ];
 
-#[cfg(test)]
+#[cfg(all(test, feature = "std"))]
 mod tests {
     use super::*;
 

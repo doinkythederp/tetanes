@@ -6,14 +6,14 @@ use crate::{
     ppu::Ppu,
 };
 use bitflags::bitflags;
-use serde::{Deserialize, Serialize};
 use core::str::FromStr;
-use thiserror::Error;
+use serde::{Deserialize, Serialize};
+use snafu::Snafu;
 use tracing::trace;
 
-#[derive(Error, Debug)]
+#[derive(Snafu, Debug)]
 #[must_use]
-#[error("failed to parse `Player`")]
+#[snafu(display("failed to parse `Player`"))]
 pub struct ParsePlayerError;
 
 #[derive(Default, Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]

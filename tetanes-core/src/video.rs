@@ -1,11 +1,12 @@
 //! Video output and filtering.
 
 use crate::ppu::Ppu;
+use alloc::{vec, vec::Vec};
 use core::{
     f64::consts::PI,
     ops::{Deref, DerefMut},
-    sync::OnceLock,
 };
+use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 
 #[derive(Default, Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -159,7 +160,7 @@ impl Video {
                 let y = idx / 256;
                 let even_phase = if frame_number & 0x01 == 0x01 { 0 } else { 1 };
                 let phase = (2 + y * 341 + x + even_phase) % 3;
-                NTSC_PALETTE.get_or_init(generate_ntsc_palette)
+                NTSC_PALETTE
                     [phase + ((prev_pixel & 0x3F) as usize) * 3 + (*pixel as usize) * 3 * 64]
             };
             prev_pixel = u32::from(*pixel);
@@ -180,7 +181,9 @@ impl core::fmt::Debug for Video {
     }
 }
 
-pub static NTSC_PALETTE: OnceLock<Vec<u32>> = OnceLock::new();
+lazy_static! {
+    pub static ref NTSC_PALETTE: Vec<u32> = generate_ntsc_palette();
+}
 fn generate_ntsc_palette() -> Vec<u32> {
     // NOTE: There's lot's to clean up here -- too many magic numbers and duplication but
     // I'm afraid to touch it now that it works
@@ -200,7 +203,7 @@ fn generate_ntsc_palette() -> Vec<u32> {
         if color <= 0.0 {
             0.0
         } else {
-            color.powf(2.2 / gamma)
+            libm::pow(color, 2.2 / gamma)
         }
     };
     let yiq_divider = f64::from(9 * 10u32.pow(6));
@@ -242,7 +245,7 @@ fn generate_ntsc_palette() -> Vec<u32> {
                         };
                         let level = 40 + VOLTAGES[high + emp_effect + luma];
                         // Ideal TV NTSC demodulator:
-                        let (sin, cos) = (PI * sample as f64 / 6.0).sin_cos();
+                        let (sin, cos) = libm::sincos(PI * sample as f64 / 6.0);
                         y += level;
                         i += level * (cos * 5909.0) as i32;
                         q += level * (sin * 5909.0) as i32;
@@ -254,18 +257,18 @@ fn generate_ntsc_palette() -> Vec<u32> {
                     let idx = palette_offset + color0_offset * 3 * 64 + color1_offset * 3;
                     match channel {
                         2 => {
-                            let rgb =
-                                255.95 * gammafix(q.mul_add(0.623_557, i.mul_add(0.946_882, y)));
+                            let rgb = 255.95
+                                * gammafix(libm::fma(q, 0.623_557, libm::fma(i, 0.946_882, y)));
                             ntsc_palette[idx] += 0x10000 * rgb.clamp(0.0, 255.0) as u32;
                         }
                         1 => {
-                            let rgb =
-                                255.95 * gammafix(q.mul_add(-0.635_691, i.mul_add(-0.274_788, y)));
+                            let rgb = 255.95
+                                * gammafix(libm::fma(q, -0.635_691, libm::fma(i, -0.274_788, y)));
                             ntsc_palette[idx] += 0x00100 * rgb.clamp(0.0, 255.0) as u32;
                         }
                         0 => {
-                            let rgb =
-                                255.95 * gammafix(q.mul_add(1.709_007, i.mul_add(-1.108_545, y)));
+                            let rgb = 255.95
+                                * gammafix(libm::fma(q, 1.709_007, libm::fma(i, -1.108_545, y)));
                             ntsc_palette[idx] += rgb.clamp(0.0, 255.0) as u32;
                         }
                         _ => (), // invalid channel

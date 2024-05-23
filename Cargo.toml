@@ -22,6 +22,7 @@ anyhow = { version = "1.0", default-features = false }
 bincode = { git = "https://github.com/bincode-org/bincode", version = "2.0.0-rc.3", tag = "v2.0.0-rc.3", default-features = false, features = [
   "alloc",
   "derive",
+  "serde",
 ] }
 cfg-if = "1.0"
 clap = { version = "4.5", default-features = false, features = [

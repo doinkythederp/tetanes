@@ -1,6 +1,10 @@
 //! Common traits and constants.
 
-use alloc::{format, string::String, vec::Vec};
+use alloc::{
+    format,
+    string::{String, ToString},
+    vec::Vec,
+};
 use core::fmt::Write;
 use enum_dispatch::enum_dispatch;
 use serde::{Deserialize, Serialize};
