@@ -37,7 +37,6 @@ pub(crate) use std::{
 };
 #[cfg(target_vendor = "vex")]
 pub(crate) use {
-    spin::{Once as OnceLock, RwLock},
     unix_path::{Path, PathBuf},
     vexide_core::io,
 };
