@@ -1,6 +1,5 @@
 //! Game Genie code parsing.
 
-use crate::OnceLock;
 use alloc::{string::String, vec::Vec};
 use hashbrown::HashMap;
 use lazy_static::lazy_static;
