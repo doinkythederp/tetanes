@@ -9,6 +9,6 @@ cfg_if! {
         pub use core::time::Duration;
         pub use vexide_core::time::Instant;
     } else {
-        pub use core::time::{Duration, Instant};
+        pub use std::time::{Duration, Instant};
     }
 }

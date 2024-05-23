@@ -30,12 +30,10 @@ pub mod sys;
 pub mod video;
 
 #[cfg(not(target_vendor = "vex"))]
-pub(crate) use std::io;
-#[cfg(not(target_vendor = "vex"))]
 pub(crate) use std::{
     io,
     path::{Path, PathBuf},
-    sync::{OnceLock, RwLock},
+    sync::OnceLock,
 };
 #[cfg(target_vendor = "vex")]
 pub(crate) use {
@@ -44,6 +42,7 @@ pub(crate) use {
     vexide_core::io,
 };
 
+pub(crate) use spin::RwLock;
 #[cfg(not(target_vendor = "vex"))]
 /// File Shim
 pub(crate) use std::fs::File;

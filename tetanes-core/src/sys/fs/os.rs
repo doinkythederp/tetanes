@@ -1,5 +1,7 @@
 //! OS-specific filesystem operations.
 
+use alloc::format;
+
 use crate::fs::{Error, Result};
 use std::{
     fs::{create_dir_all, remove_dir_all, File},
@@ -10,7 +12,9 @@ use std::{
 pub fn writer_impl(path: impl AsRef<Path>) -> Result<impl Write> {
     let path = path.as_ref();
     let Some(directory) = path.parent() else {
-        return Err(Error::InvalidPath(path.to_path_buf()));
+        return Err(Error::InvalidPath {
+            inner: path.to_path_buf(),
+        });
     };
     if !directory.exists() {
         create_dir_all(directory)

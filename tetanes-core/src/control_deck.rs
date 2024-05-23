@@ -472,7 +472,9 @@ impl ControlDeck {
             #[cfg(not(target_vendor = "vex"))]
             {
                 if path.is_dir() {
-                    return Err(Error::InvalidFilePath(path.to_path_buf()));
+                    return Err(Error::InvalidFilePath {
+                        path: path.to_path_buf(),
+                    });
                 }
             }
 
@@ -493,7 +495,9 @@ impl ControlDeck {
             #[cfg(not(target_vendor = "vex"))]
             {
                 if path.is_dir() {
-                    return Err(Error::InvalidFilePath(path.to_path_buf()));
+                    return Err(Error::InvalidFilePath {
+                        path: path.to_path_buf(),
+                    });
                 }
                 if !path.is_file() {
                     return Ok(());

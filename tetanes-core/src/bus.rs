@@ -338,6 +338,8 @@ impl core::fmt::Debug for Bus {
 
 #[cfg(all(feature = "std", test))]
 mod test {
+    use alloc::string::ToString;
+
     use super::*;
     use crate::mapper::Cnrom;
 
