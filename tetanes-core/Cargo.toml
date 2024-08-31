@@ -65,7 +65,7 @@ unix_path = { version = "1.0.1", default-features = false, features = [
     "alloc",
 ] }
 no_std_io = { version = "0.6.0", features = ["alloc", "nightly"] }
-vex-sdk = "0.18.0"
+vex-sdk = "0.17.0"
 rand_pcg = "0.3.1"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
