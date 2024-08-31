@@ -532,7 +532,7 @@ dependencies = [
  "spin 0.9.8",
  "tracing",
  "unix_path",
- "vex-sdk",
+ "vex-sdk 0.18.0",
  "vexide-core",
  "web-time",
 ]
@@ -602,27 +602,34 @@ checksum = "49874b5167b65d7193b8aba1567f5c7d93d001cafc34600cee003eda787e483f"
 
 [[package]]
 name = "vex-sdk"
-version = "0.14.0"
+version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f96042448be8828098eb3c799071bbf5a9a1abc170264ac04ffeef355eb1d60a"
+checksum = "f285bbc2b96fc4c7fae42ebe365dd2e9121e7002a58b1a9e0e4b1d14dba4d6d0"
+
+[[package]]
+name = "vex-sdk"
+version = "0.18.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7912fddd6e75cd095452cb2c783f37af782d2a4e614de88c8b65c018a4c00790"
 
 [[package]]
 name = "vexide-core"
-version = "0.2.0"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d149c51e15ca483d095c867d840db484f9e20b54034ba0510d7d72eb92d27245"
+checksum = "74f955e2a26dcc203c3932e631c1b066c74903d45ecd925cbf4884a5ca1b18aa"
 dependencies = [
  "bitflags",
  "critical-section",
  "dlmalloc",
  "futures-core",
+ "libm",
  "lock_api",
  "no_std_io",
  "pin-project",
  "replace_with",
  "snafu",
  "talc",
- "vex-sdk",
+ "vex-sdk 0.17.0",
 ]
 
 [[package]]
